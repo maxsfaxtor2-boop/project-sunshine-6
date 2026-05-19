@@ -11,7 +11,7 @@ const FEATURES = [
 
 export default function Featured() {
   return (
-    <div id="features" className="flex flex-col lg:flex-row lg:justify-between lg:items-center min-h-screen px-6 py-12 lg:py-0 bg-white">
+    <div id="features" className="flex flex-col lg:flex-row lg:justify-between lg:items-center min-h-screen px-6 py-12 lg:py-0 bg-[#020817]">
       <div className="flex-1 h-[400px] lg:h-[800px] mb-8 lg:mb-0 lg:order-2">
         <img
           src="https://cdn.poehali.dev/projects/614d053f-56a2-4ff5-8bc9-4363df40c0a0/files/dbf0d1b7-ddb8-4e71-a4a5-9239a7a8858f.jpg"
@@ -20,24 +20,24 @@ export default function Featured() {
         />
       </div>
       <div className="flex-1 text-left lg:h-[800px] flex flex-col justify-center lg:mr-12 lg:order-1">
-        <h3 className="uppercase mb-4 text-sm tracking-wide text-neutral-600">Возможности платформы</h3>
-        <p className="text-2xl lg:text-4xl mb-8 text-neutral-900 leading-tight">
+        <h3 className="uppercase mb-4 text-sm tracking-wide text-blue-400">Возможности платформы</h3>
+        <p className="text-2xl lg:text-4xl mb-8 text-white leading-tight">
           Всё для творчества — от идеи до готового результата. ИИ работает за тебя.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           {FEATURES.map((f) => (
             <div key={f.title} className="flex gap-3 items-start">
-              <div className="w-8 h-8 flex items-center justify-center bg-neutral-100 flex-shrink-0 mt-0.5">
-                <Icon name={f.icon} size={16} />
+              <div className="w-8 h-8 flex items-center justify-center bg-blue-500/10 border border-blue-500/20 flex-shrink-0 mt-0.5">
+                <Icon name={f.icon} size={16} className="text-blue-400" />
               </div>
               <div>
-                <p className="font-semibold text-sm text-neutral-900">{f.title}</p>
-                <p className="text-xs text-neutral-500 mt-0.5">{f.desc}</p>
+                <p className="font-semibold text-sm text-white">{f.title}</p>
+                <p className="text-xs text-blue-200/60 mt-0.5">{f.desc}</p>
               </div>
             </div>
           ))}
         </div>
-        <button className="bg-black text-white border border-black px-4 py-2 text-sm transition-all duration-300 hover:bg-white hover:text-black cursor-pointer w-fit uppercase tracking-wide">
+        <button className="bg-blue-600 text-white border border-blue-600 px-4 py-2 text-sm transition-all duration-300 hover:bg-blue-500 cursor-pointer w-fit uppercase tracking-wide">
           Попробовать
         </button>
       </div>
