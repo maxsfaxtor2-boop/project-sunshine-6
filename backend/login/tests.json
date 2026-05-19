@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Missing fields",
+      "method": "POST",
+      "path": "/",
+      "body": {"email": "", "password": ""},
+      "expectedStatus": 400
+    },
+    {
+      "name": "Wrong credentials",
+      "method": "POST",
+      "path": "/",
+      "body": {"email": "nobody@example.com", "password": "wrongpass"},
+      "expectedStatus": 401
+    }
+  ]
+}
