@@ -32,7 +32,7 @@ export default function Register() {
 
     if (res.ok) {
       setSuccess(true);
-      setTimeout(() => navigate("/"), 2000);
+      setTimeout(() => navigate("/dashboard"), 2000);
     } else {
       setError(data.error || "Что-то пошло не так");
     }

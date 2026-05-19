@@ -31,7 +31,7 @@ export default function Login() {
 
     if (res.ok) {
       localStorage.setItem("masyanya_user", JSON.stringify(data.user));
-      navigate("/");
+      navigate("/dashboard");
     } else {
       setError(data.error || "Что-то пошло не так");
     }
