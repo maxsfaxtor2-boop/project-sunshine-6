@@ -9,8 +9,8 @@ const PLANS = [
     description: "Для знакомства с платформой",
     highlight: false,
     features: [
-      { text: "10 генераций фото в месяц", included: true },
-      { text: "3 генерации видео в месяц", included: true },
+      { text: "5 генераций фото в месяц", included: true },
+      { text: "1 генерация видео в месяц", included: true },
       { text: "Базовые шаблоны (20 штук)", included: true },
       { text: "Оживление фото", included: false },
       { text: "Рекламные шаблоны", included: false },
