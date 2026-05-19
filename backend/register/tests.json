@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Missing fields",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "", "email": "", "password": ""},
+      "expectedStatus": 400
+    },
+    {
+      "name": "Successful registration",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "Тест Юзер", "email": "testuser3_masyanya@example.com", "password": "secret123"},
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

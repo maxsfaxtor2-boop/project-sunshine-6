@@ -1,5 +1,6 @@
 import { useScroll, useTransform, motion } from "framer-motion";
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 const AI_CHATS = [
   { name: "ChatGPT", color: "#10a37f", url: "https://chat.openai.com" },
@@ -10,6 +11,7 @@ const AI_CHATS = [
 ];
 
 export default function Hero() {
+  const navigate = useNavigate();
   const container = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: container,
@@ -43,7 +45,10 @@ export default function Hero() {
           Генерируй фото и видео, оживляй изображения, создавай рекламные материалы — всё с силой искусственного интеллекта
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-14">
-          <button className="bg-white text-black px-8 py-3 uppercase tracking-wide text-sm font-semibold hover:bg-neutral-200 transition-colors duration-300">
+          <button
+            onClick={() => navigate("/register")}
+            className="bg-white text-black px-8 py-3 uppercase tracking-wide text-sm font-semibold hover:bg-neutral-200 transition-colors duration-300"
+          >
             Начать бесплатно
           </button>
           <button className="border border-white text-white px-8 py-3 uppercase tracking-wide text-sm hover:bg-white/10 transition-colors duration-300">
