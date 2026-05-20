@@ -81,7 +81,10 @@ def handler(event: dict, context) -> dict:
     if not user_id:
         return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'user_id обязателен'})}
 
-    fal_key = os.environ['FAL_API_KEY']
+    fal_key = os.environ.get('FAL_API_KEY', '')
+    if not fal_key:
+        available = [k for k in os.environ if 'FAL' in k or 'API' in k]
+        return {'statusCode': 500, 'headers': HEADERS, 'body': json.dumps({'error': 'FAL_API_KEY не задан', 'available_keys': available})}
     s3 = boto3.client(
         's3',
         endpoint_url='https://bucket.poehali.dev',
