@@ -4,7 +4,7 @@ import Icon from "@/components/ui/icon";
 import func2url from "../../backend/func2url.json";
 
 const TOOLS = [
-  { id: "photo", icon: "ImagePlus", title: "Генерация фото", desc: "Создай уникальное изображение по описанию", badge: "Скоро", color: "blue" },
+  { id: "photo", icon: "ImagePlus", title: "Генерация фото", desc: "Создай уникальное изображение по описанию", badge: null, color: "blue" },
   { id: "video", icon: "Video", title: "Генерация видео", desc: "Превращай идеи в видеоролики с ИИ", badge: "Скоро", color: "purple" },
   { id: "animate", icon: "Sparkles", title: "Оживление фото", desc: "Добавь движение статичным фото", badge: "Скоро", color: "pink" },
   { id: "templates", icon: "Layout", title: "Шаблоны", desc: "Надписи, баннеры и рекламные материалы", badge: "Скоро", color: "orange" },
@@ -59,6 +59,12 @@ export default function Dashboard() {
   const [selectedWork, setSelectedWork] = useState<Work | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "photo" | "video" | "animation" | "template">("all");
 
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState("");
+  const [genResult, setGenResult] = useState<{ url: string; title: string } | null>(null);
+
   useEffect(() => {
     const stored = localStorage.getItem("masyanya_user");
     if (!stored) { navigate("/login"); return; }
@@ -80,6 +86,35 @@ export default function Dashboard() {
     setWorksLoading(false);
   };
 
+  const handleGenerate = async () => {
+    if (!prompt.trim() || !user) return;
+    setGenerating(true);
+    setGenError("");
+    setGenResult(null);
+    const res = await fetch(func2url["generate-image"], {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, prompt: prompt.trim(), title: prompt.trim().slice(0, 60) }),
+    });
+    const raw = await res.json();
+    const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (data.success) {
+      setGenResult({ url: data.url, title: data.title });
+      const newWork: Work = { id: data.id, title: data.title, type: "photo", url: data.url, prompt: prompt.trim(), created_at: new Date().toISOString() };
+      setWorks(prev => [newWork, ...prev]);
+    } else {
+      setGenError(data.error || "Что-то пошло не так, попробуй ещё раз");
+    }
+    setGenerating(false);
+  };
+
+  const openGenerate = () => { setShowGenerate(true); setGenResult(null); setPrompt(""); setGenError(""); };
+
+  const handleToolClick = (id: string) => {
+    if (id === "photo") openGenerate();
+    if (id === "chats") document.getElementById("ai-section")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("masyanya_user");
     navigate("/");
@@ -91,7 +126,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#020817] text-white">
-      {/* Шапка */}
       <header className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <a href="/" className="text-white text-sm uppercase tracking-widest font-bold hover:text-blue-400 transition-colors">
           MASYANYA AI
@@ -110,7 +144,6 @@ export default function Dashboard() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 py-12">
-        {/* Приветствие */}
         <div className="mb-12">
           <p className="text-blue-400 text-xs uppercase tracking-widest mb-2">Личный кабинет</p>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Привет, {user.name.split(" ")[0]}!</h1>
@@ -125,11 +158,16 @@ export default function Dashboard() {
               <div
                 key={tool.id}
                 className={`relative border rounded-sm p-6 cursor-pointer transition-all duration-300 group ${COLOR_MAP[tool.color]}`}
-                onClick={() => tool.id === "chats" ? document.getElementById("ai-section")?.scrollIntoView({ behavior: "smooth" }) : null}
+                onClick={() => handleToolClick(tool.id)}
               >
                 {tool.badge && (
                   <span className="absolute top-4 right-4 text-[10px] uppercase tracking-widest text-white/30 border border-white/10 px-2 py-0.5">
                     {tool.badge}
+                  </span>
+                )}
+                {tool.id === "photo" && (
+                  <span className="absolute top-4 right-4 text-[10px] uppercase tracking-widest text-blue-400 border border-blue-500/30 px-2 py-0.5">
+                    Активно
                   </span>
                 )}
                 <Icon name={tool.icon} size={24} className={`mb-4 ${ICON_COLOR_MAP[tool.color]}`} />
@@ -144,10 +182,18 @@ export default function Dashboard() {
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xs uppercase tracking-widest text-blue-200/40">Мои работы</h2>
-            <span className="text-xs text-white/20">{works.length} работ</span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-white/20">{works.length} работ</span>
+              <button
+                onClick={openGenerate}
+                className="text-xs uppercase tracking-wide text-blue-400 hover:text-blue-300 border border-blue-500/30 hover:border-blue-400/60 px-3 py-1.5 transition-colors flex items-center gap-1.5"
+              >
+                <Icon name="Plus" size={12} />
+                Создать
+              </button>
+            </div>
           </div>
 
-          {/* Фильтры */}
           <div className="flex gap-2 mb-6 flex-wrap">
             {(["all", "photo", "video", "animation", "template"] as const).map((tab) => (
               <button
@@ -171,10 +217,13 @@ export default function Dashboard() {
               ))}
             </div>
           ) : filteredWorks.length === 0 ? (
-            <div className="border border-dashed border-white/10 rounded-sm p-12 text-center">
-              <Icon name="ImageOff" size={32} className="text-white/20 mx-auto mb-3" />
+            <div
+              className="border border-dashed border-blue-500/20 hover:border-blue-500/40 rounded-sm p-12 text-center cursor-pointer transition-colors group"
+              onClick={openGenerate}
+            >
+              <Icon name="ImagePlus" size={32} className="text-blue-500/30 group-hover:text-blue-400/60 mx-auto mb-3 transition-colors" />
               <p className="text-white/40 text-sm">Здесь будут ваши созданные работы</p>
-              <p className="text-white/20 text-xs mt-1">Начни с любого инструмента выше</p>
+              <p className="text-blue-400/40 group-hover:text-blue-400/70 text-xs mt-2 transition-colors">Нажми, чтобы создать первое фото →</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -226,7 +275,7 @@ export default function Dashboard() {
             <p className="text-white/40 text-xs mt-1">5 фото и 1 видео в месяц</p>
           </div>
           <button
-            onClick={() => { navigate("/"); setTimeout(() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }), 300); }}
+            onClick={() => navigate("/")}
             className="bg-blue-600 text-white text-xs uppercase tracking-wide px-6 py-2.5 hover:bg-blue-500 transition-colors flex-shrink-0"
           >
             Улучшить тариф
@@ -234,16 +283,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Модалка просмотра работы */}
+      {/* Модалка: просмотр работы */}
       {selectedWork && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedWork(null)}
-        >
-          <div
-            className="relative max-w-2xl w-full bg-[#0a1628] border border-white/10 rounded-sm overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedWork(null)}>
+          <div className="relative max-w-2xl w-full bg-[#0a1628] border border-white/10 rounded-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <img src={selectedWork.url} alt={selectedWork.title} className="w-full max-h-[60vh] object-contain" />
             <div className="p-5">
               <div className="flex items-center justify-between mb-2">
@@ -255,13 +298,106 @@ export default function Dashboard() {
               </div>
               <h3 className="text-white font-semibold mb-1">{selectedWork.title}</h3>
               {selectedWork.prompt && <p className="text-white/40 text-xs">{selectedWork.prompt}</p>}
+              <div className="mt-4 flex gap-3">
+                <a
+                  href={selectedWork.url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs uppercase tracking-wide px-4 py-2 transition-colors"
+                >
+                  <Icon name="Download" size={13} />
+                  Скачать
+                </a>
+              </div>
             </div>
-            <button
-              onClick={() => setSelectedWork(null)}
-              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 transition-colors rounded-sm"
-            >
+            <button onClick={() => setSelectedWork(null)} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 transition-colors rounded-sm">
               <Icon name="X" size={16} className="text-white" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка: генерация фото */}
+      {showGenerate && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !generating && setShowGenerate(false)}>
+          <div className="relative max-w-lg w-full bg-[#0a1628] border border-white/10 rounded-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Icon name="ImagePlus" size={20} className="text-blue-400" />
+                <span className="text-white font-semibold">Генерация фото</span>
+              </div>
+              {!generating && (
+                <button onClick={() => setShowGenerate(false)} className="text-white/30 hover:text-white transition-colors">
+                  <Icon name="X" size={18} />
+                </button>
+              )}
+            </div>
+
+            <div className="p-6">
+              {!genResult ? (
+                <>
+                  <label className="text-xs uppercase tracking-widest text-white/40 mb-3 block">Опиши что хочешь создать</label>
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Например: закат над горами в стиле акварели, кот в скафандре на луне, портрет девушки в стиле аниме..."
+                    disabled={generating}
+                    rows={4}
+                    className="w-full bg-white/5 border border-white/10 focus:border-blue-500/60 outline-none text-white placeholder-white/20 text-sm p-4 resize-none transition-colors rounded-sm"
+                    onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) handleGenerate(); }}
+                  />
+                  {genError && (
+                    <div className="mt-3 flex items-center gap-2 text-red-400 text-xs">
+                      <Icon name="AlertCircle" size={14} />
+                      {genError}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleGenerate}
+                    disabled={!prompt.trim() || generating}
+                    className="mt-4 w-full bg-blue-600 hover:bg-blue-500 disabled:bg-white/10 disabled:text-white/30 text-white text-sm uppercase tracking-wide py-3 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {generating ? (
+                      <>
+                        <Icon name="Loader2" size={16} className="animate-spin" />
+                        Генерирую... ~15 секунд
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="Sparkles" size={16} />
+                        Создать фото
+                      </>
+                    )}
+                  </button>
+                  <p className="text-white/20 text-xs text-center mt-3">Ctrl+Enter для быстрого запуска</p>
+                </>
+              ) : (
+                <>
+                  <img src={genResult.url} alt={genResult.title} className="w-full rounded-sm mb-4" />
+                  <p className="text-white/50 text-sm mb-4 line-clamp-2">{prompt}</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setPrompt(""); setGenResult(null); setGenError(""); }}
+                      className="flex-1 border border-white/10 hover:border-white/30 text-white/60 hover:text-white text-sm py-2.5 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Icon name="RefreshCw" size={14} />
+                      Создать ещё
+                    </button>
+                    <a
+                      href={genResult.url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-sm py-2.5 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Icon name="Download" size={14} />
+                      Скачать
+                    </a>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
