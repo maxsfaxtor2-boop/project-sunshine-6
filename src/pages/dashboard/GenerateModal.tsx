@@ -262,7 +262,10 @@ export default function GenerateModal({
                 className="mt-5 w-full bg-blue-600 hover:bg-blue-500 disabled:bg-white/10 disabled:text-white/30 text-white text-sm uppercase tracking-wide py-3 transition-colors flex items-center justify-center gap-2"
               >
                 {generating
-                  ? <><Icon name="Loader2" size={16} className="animate-spin" /> Генерирую...</>
+                  ? <>
+                      <Icon name="Loader2" size={16} className="animate-spin" />
+                      {modal === "video" || modal === "animation" ? "Генерирую... (~1-2 мин)" : "Генерирую..."}
+                    </>
                   : <><Icon name="Sparkles" size={16} /> Создать</>
                 }
               </button>

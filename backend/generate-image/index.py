@@ -67,46 +67,47 @@ def fal_upload_image(image_bytes, fal_key, mime_type='image/jpeg'):
     return file_url
 
 
-def fal_queue_submit(endpoint, payload, fal_key, timeout=240):
-    """Отправляет задачу через FAL queue и ждёт результата (для долгих операций)"""
-    submit_req = urllib.request.Request(
+def fal_queue_submit_only(endpoint, payload, fal_key):
+    """Отправляет задачу в FAL queue и сразу возвращает request_id"""
+    req = urllib.request.Request(
         f'https://queue.fal.run/{endpoint}',
         data=json.dumps(payload).encode('utf-8'),
         headers={'Authorization': f'Key {fal_key}', 'Content-Type': 'application/json'},
         method='POST',
     )
-    with urllib.request.urlopen(submit_req, timeout=30) as resp:
-        queue_result = json.loads(resp.read().decode('utf-8'))
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        result = json.loads(resp.read().decode('utf-8'))
+    return result['request_id']
 
-    request_id = queue_result['request_id']
+
+def fal_queue_poll(endpoint, request_id, fal_key):
+    """Проверяет статус задачи в FAL queue. Возвращает status + result если готово."""
     status_url = f'https://queue.fal.run/{endpoint}/requests/{request_id}/status'
     result_url = f'https://queue.fal.run/{endpoint}/requests/{request_id}'
 
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        status_req = urllib.request.Request(
-            status_url,
+    status_req = urllib.request.Request(
+        status_url,
+        headers={'Authorization': f'Key {fal_key}'},
+        method='GET',
+    )
+    with urllib.request.urlopen(status_req, timeout=15) as resp:
+        status = json.loads(resp.read().decode('utf-8'))
+
+    job_status = status.get('status', 'IN_QUEUE')
+
+    if job_status == 'COMPLETED':
+        result_req = urllib.request.Request(
+            result_url,
             headers={'Authorization': f'Key {fal_key}'},
             method='GET',
         )
-        with urllib.request.urlopen(status_req, timeout=15) as resp:
-            status = json.loads(resp.read().decode('utf-8'))
+        with urllib.request.urlopen(result_req, timeout=20) as resp:
+            return {'status': 'COMPLETED', 'result': json.loads(resp.read().decode('utf-8'))}
 
-        if status.get('status') == 'COMPLETED':
-            result_req = urllib.request.Request(
-                result_url,
-                headers={'Authorization': f'Key {fal_key}'},
-                method='GET',
-            )
-            with urllib.request.urlopen(result_req, timeout=30) as resp:
-                return json.loads(resp.read().decode('utf-8'))
+    if job_status == 'FAILED':
+        return {'status': 'FAILED', 'error': str(status.get('error', 'unknown error'))}
 
-        if status.get('status') == 'FAILED':
-            raise Exception(f"FAL queue failed: {status.get('error', 'unknown')}")
-
-        time.sleep(3)
-
-    raise Exception('FAL queue timeout exceeded')
+    return {'status': job_status}
 
 
 def download_url(url, timeout=60):
@@ -146,6 +147,7 @@ def handler(event: dict, context) -> dict:
     body = json.loads(event.get('body') or '{}')
     user_id = body.get('user_id')
     work_type = (body.get('type') or 'photo').strip()
+    action = (body.get('action') or 'generate').strip()
 
     if not user_id:
         return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'user_id обязателен'})}
@@ -160,6 +162,32 @@ def handler(event: dict, context) -> dict:
         aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
         aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
     )
+
+    # ── POLL: проверка статуса длинной задачи ────────────────────────
+    if action == 'poll':
+        endpoint = body.get('endpoint', '')
+        request_id = body.get('request_id', '')
+        title = body.get('title', '')
+        if not endpoint or not request_id:
+            return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'endpoint и request_id обязательны'})}
+
+        poll_result = fal_queue_poll(endpoint, request_id, fal_key)
+
+        if poll_result['status'] == 'COMPLETED':
+            result = poll_result['result']
+            vid_url = (result.get('video') or {}).get('url') or result.get('video_url', '')
+            data = download_url(vid_url)
+            file_prefix = 'anim' if work_type == 'animation' else 'video'
+            key = f"works/{user_id}/{file_prefix}_{uuid.uuid4().hex}.mp4"
+            cdn = upload_to_s3(s3, data, key, 'video/mp4')
+            prompt_text = body.get('prompt', 'Оживление фото' if work_type == 'animation' else '')
+            work_id = save_work(user_id, title, work_type, cdn, prompt_text)
+            return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'status': 'COMPLETED', 'success': True, 'id': work_id, 'url': cdn, 'title': title, 'media': 'video'})}
+
+        if poll_result['status'] == 'FAILED':
+            return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'status': 'FAILED', 'error': poll_result.get('error', 'Ошибка генерации')})}
+
+        return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'status': poll_result['status']})}
 
     # ── ФОТО ─────────────────────────────────────────────────────────
     if work_type == 'photo':
@@ -177,24 +205,18 @@ def handler(event: dict, context) -> dict:
         work_id = save_work(user_id, title, 'photo', cdn, prompt)
         return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'success': True, 'id': work_id, 'url': cdn, 'title': title, 'media': 'image'})}
 
-    # ── ВИДЕО ─────────────────────────────────────────────────────────
+    # ── ВИДЕО: submit → вернуть request_id, фронт сам опрашивает ─────
     if work_type == 'video':
         prompt = (body.get('prompt') or '').strip()
         title = (body.get('title') or prompt[:60] or 'Видео').strip()
         if not prompt:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'prompt обязателен'})}
 
-        result = fal_queue_submit('fal-ai/minimax-video/text-to-video', {
-            'prompt': prompt,
-        }, fal_key, timeout=240)
-        vid_url = (result.get('video') or {}).get('url') or result.get('video_url', '')
-        data = download_url(vid_url)
-        key = f"works/{user_id}/video_{uuid.uuid4().hex}.mp4"
-        cdn = upload_to_s3(s3, data, key, 'video/mp4')
-        work_id = save_work(user_id, title, 'video', cdn, prompt)
-        return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'success': True, 'id': work_id, 'url': cdn, 'title': title, 'media': 'video'})}
+        endpoint = 'fal-ai/minimax-video/text-to-video'
+        request_id = fal_queue_submit_only(endpoint, {'prompt': prompt}, fal_key)
+        return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'status': 'IN_QUEUE', 'request_id': request_id, 'endpoint': endpoint, 'title': title})}
 
-    # ── АНИМАЦИЯ / ОЖИВЛЕНИЕ ФОТО ────────────────────────────────────
+    # ── АНИМАЦИЯ: загрузить фото → submit → вернуть request_id ───────
     if work_type == 'animation':
         image_b64 = body.get('image_b64')
         title = (body.get('title') or 'Оживлённое фото').strip()
@@ -204,17 +226,13 @@ def handler(event: dict, context) -> dict:
         image_bytes = base64.b64decode(image_b64)
         image_url = fal_upload_image(image_bytes, fal_key)
 
-        result = fal_queue_submit('fal-ai/stable-video', {
+        endpoint = 'fal-ai/stable-video'
+        request_id = fal_queue_submit_only(endpoint, {
             'image_url': image_url,
             'motion_bucket_id': 127,
             'cond_aug': 0.02,
-        }, fal_key, timeout=240)
-        vid_url = (result.get('video') or {}).get('url') or result.get('video_url', '')
-        data = download_url(vid_url)
-        key = f"works/{user_id}/anim_{uuid.uuid4().hex}.mp4"
-        cdn = upload_to_s3(s3, data, key, 'video/mp4')
-        work_id = save_work(user_id, title, 'animation', cdn, 'Оживление фото')
-        return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'success': True, 'id': work_id, 'url': cdn, 'title': title, 'media': 'video'})}
+        }, fal_key)
+        return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'status': 'IN_QUEUE', 'request_id': request_id, 'endpoint': endpoint, 'title': title})}
 
     # ── ШАБЛОН ───────────────────────────────────────────────────────
     if work_type == 'template':

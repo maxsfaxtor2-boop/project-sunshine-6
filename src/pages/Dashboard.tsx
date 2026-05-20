@@ -108,15 +108,49 @@ export default function Dashboard() {
     setGenerating(false);
   };
 
+  const pollUntilDone = async (requestId: string, endpoint: string, workType: "video" | "animation", title: string, usedPrompt: string) => {
+    const maxAttempts = 60;
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, 4000));
+      try {
+        const res = await fetch(func2url["generate-image"], {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: user!.id, action: "poll", type: workType, request_id: requestId, endpoint, title, prompt: usedPrompt }),
+        });
+        const raw = await res.json();
+        const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (data.status === "COMPLETED") {
+          afterSuccess(data, usedPrompt);
+          setGenerating(false);
+          return;
+        }
+        if (data.status === "FAILED") {
+          setGenError(data.error || "Ошибка генерации");
+          setGenerating(false);
+          return;
+        }
+      } catch { /* продолжаем опрос */ }
+    }
+    setGenError("Превышено время ожидания. Попробуй ещё раз.");
+    setGenerating(false);
+  };
+
   const handleGenerateVideo = async () => {
     if (!videoPrompt.trim() || !user) return;
     setGenerating(true); setGenError("");
     try {
       const data = await callGenerate({ type: "video", prompt: videoPrompt.trim(), title: videoPrompt.trim().slice(0, 60) });
-      if (data.success) afterSuccess(data, videoPrompt.trim());
-      else setGenError(data.error || "Что-то пошло не так");
-    } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
-    setGenerating(false);
+      if (data.status === "IN_QUEUE") {
+        pollUntilDone(data.request_id, data.endpoint, "video", data.title, videoPrompt.trim());
+      } else if (data.success) {
+        afterSuccess(data, videoPrompt.trim());
+        setGenerating(false);
+      } else {
+        setGenError(data.error || "Что-то пошло не так");
+        setGenerating(false);
+      }
+    } catch { setGenError("Ошибка соединения, попробуй ещё раз"); setGenerating(false); }
   };
 
   const handleAnimFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,10 +172,16 @@ export default function Dashboard() {
         const dataUrl = ev.target?.result as string;
         const b64 = dataUrl.split(",")[1];
         const data = await callGenerate({ type: "animation", image_b64: b64, title: animTitle });
-        if (data.success) afterSuccess(data, "Оживление фото");
-        else setGenError(data.error || "Что-то пошло не так");
-      } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
-      setGenerating(false);
+        if (data.status === "IN_QUEUE") {
+          pollUntilDone(data.request_id, data.endpoint, "animation", data.title, "Оживление фото");
+        } else if (data.success) {
+          afterSuccess(data, "Оживление фото");
+          setGenerating(false);
+        } else {
+          setGenError(data.error || "Что-то пошло не так");
+          setGenerating(false);
+        }
+      } catch { setGenError("Ошибка соединения, попробуй ещё раз"); setGenerating(false); }
     };
     reader.readAsDataURL(animFile);
   };
