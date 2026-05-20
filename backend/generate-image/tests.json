@@ -1,17 +1,11 @@
 {
   "tests": [
-    {
-      "name": "OPTIONS preflight",
-      "method": "OPTIONS",
-      "path": "/",
-      "expectedStatus": 200
-    },
-    {
-      "name": "POST без параметров",
-      "method": "POST",
-      "path": "/",
-      "body": {},
-      "expectedStatus": 400
-    }
+    {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
+    {"name": "POST без user_id", "method": "POST", "path": "/", "body": {}, "expectedStatus": 400},
+    {"name": "POST photo без prompt", "method": "POST", "path": "/", "body": {"user_id": 1, "type": "photo"}, "expectedStatus": 400},
+    {"name": "POST video без prompt", "method": "POST", "path": "/", "body": {"user_id": 1, "type": "video"}, "expectedStatus": 400},
+    {"name": "POST animation без image_b64", "method": "POST", "path": "/", "body": {"user_id": 1, "type": "animation"}, "expectedStatus": 400},
+    {"name": "POST template без description", "method": "POST", "path": "/", "body": {"user_id": 1, "type": "template"}, "expectedStatus": 400},
+    {"name": "POST ad без product", "method": "POST", "path": "/", "body": {"user_id": 1, "type": "ad"}, "expectedStatus": 400}
   ]
 }
