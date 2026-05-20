@@ -109,19 +109,24 @@ export default function GenerateModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="relative max-w-lg w-full bg-[#0a1628] border border-white/10 rounded-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="relative w-full sm:max-w-lg bg-[#0a1628] border border-white/10 sm:rounded-sm rounded-t-xl overflow-hidden max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+        {/* Мобильная ручка */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-white/20 rounded-full" />
+        </div>
 
         {/* Заголовок */}
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Icon name={tool?.icon || "Sparkles"} size={20} className="text-blue-400" />
             <span className="text-white font-semibold">{tool?.title}</span>
           </div>
-          {!generating && <button onClick={onClose} className="text-white/30 hover:text-white transition-colors"><Icon name="X" size={18} /></button>}
+          {!generating && <button onClick={onClose} className="text-white/30 hover:text-white transition-colors p-1"><Icon name="X" size={18} /></button>}
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {genResult ? (
             <GenResult {...genResult} onAgain={onAgain} onClose={onClose} />
           ) : (

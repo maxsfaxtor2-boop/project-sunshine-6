@@ -4,6 +4,7 @@ import os
 import uuid
 import base64
 import urllib.request
+import time
 import psycopg2
 import boto3
 
@@ -16,16 +17,16 @@ HEADERS = {
 TEMPLATE_SIZES = {
     'banner': 'landscape_16_9',
     'square': 'square_hd',
-    'story': 'portrait_16_9',
-    'vk': 'landscape_4_3',
+    'story':  'portrait_16_9',
+    'vk':     'landscape_4_3',
 }
 
 AD_PLATFORMS = {
-    'vk': ('square_hd', 'ВКонтакте'),
-    'instagram': ('square_hd', 'Instagram'),
-    'facebook': ('landscape_16_9', 'Facebook'),
-    'stories': ('portrait_16_9', 'Сторис'),
-    'yandex': ('landscape_4_3', 'Яндекс'),
+    'vk':        ('square_hd',      'ВКонтакте'),
+    'instagram': ('square_hd',      'Instagram'),
+    'facebook':  ('landscape_16_9', 'Facebook'),
+    'stories':   ('portrait_16_9',  'Сторис'),
+    'yandex':    ('landscape_4_3',  'Яндекс'),
 }
 
 
@@ -38,6 +39,74 @@ def fal_post(url, payload, fal_key, timeout=120):
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode('utf-8'))
+
+
+def fal_upload_image(image_bytes, fal_key, mime_type='image/jpeg'):
+    """Загружает изображение через FAL storage API и возвращает URL"""
+    req = urllib.request.Request(
+        'https://fal.run/fal-ai/storage/upload/initiate',
+        data=json.dumps({'content_type': mime_type, 'file_size': len(image_bytes)}).encode('utf-8'),
+        headers={'Authorization': f'Key {fal_key}', 'Content-Type': 'application/json'},
+        method='POST',
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        init_result = json.loads(resp.read().decode('utf-8'))
+
+    upload_url = init_result['upload_url']
+    file_url = init_result['file_url']
+
+    put_req = urllib.request.Request(
+        upload_url,
+        data=image_bytes,
+        headers={'Content-Type': mime_type},
+        method='PUT',
+    )
+    with urllib.request.urlopen(put_req, timeout=60) as r:
+        r.read()
+
+    return file_url
+
+
+def fal_queue_submit(endpoint, payload, fal_key, timeout=240):
+    """Отправляет задачу через FAL queue и ждёт результата (для долгих операций)"""
+    submit_req = urllib.request.Request(
+        f'https://queue.fal.run/{endpoint}',
+        data=json.dumps(payload).encode('utf-8'),
+        headers={'Authorization': f'Key {fal_key}', 'Content-Type': 'application/json'},
+        method='POST',
+    )
+    with urllib.request.urlopen(submit_req, timeout=30) as resp:
+        queue_result = json.loads(resp.read().decode('utf-8'))
+
+    request_id = queue_result['request_id']
+    status_url = f'https://queue.fal.run/{endpoint}/requests/{request_id}/status'
+    result_url = f'https://queue.fal.run/{endpoint}/requests/{request_id}'
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        status_req = urllib.request.Request(
+            status_url,
+            headers={'Authorization': f'Key {fal_key}'},
+            method='GET',
+        )
+        with urllib.request.urlopen(status_req, timeout=15) as resp:
+            status = json.loads(resp.read().decode('utf-8'))
+
+        if status.get('status') == 'COMPLETED':
+            result_req = urllib.request.Request(
+                result_url,
+                headers={'Authorization': f'Key {fal_key}'},
+                method='GET',
+            )
+            with urllib.request.urlopen(result_req, timeout=30) as resp:
+                return json.loads(resp.read().decode('utf-8'))
+
+        if status.get('status') == 'FAILED':
+            raise Exception(f"FAL queue failed: {status.get('error', 'unknown')}")
+
+        time.sleep(3)
+
+    raise Exception('FAL queue timeout exceeded')
 
 
 def download_url(url, timeout=60):
@@ -83,8 +152,8 @@ def handler(event: dict, context) -> dict:
 
     fal_key = os.environ.get('FAL_API_KEY', '')
     if not fal_key:
-        available = [k for k in os.environ if 'FAL' in k or 'API' in k]
-        return {'statusCode': 500, 'headers': HEADERS, 'body': json.dumps({'error': 'FAL_API_KEY не задан', 'available_keys': available})}
+        return {'statusCode': 500, 'headers': HEADERS, 'body': json.dumps({'error': 'FAL_API_KEY не настроен на сервере'})}
+
     s3 = boto3.client(
         's3',
         endpoint_url='https://bucket.poehali.dev',
@@ -115,10 +184,9 @@ def handler(event: dict, context) -> dict:
         if not prompt:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'prompt обязателен'})}
 
-        result = fal_post('https://fal.run/fal-ai/minimax-video', {
+        result = fal_queue_submit('fal-ai/minimax-video/text-to-video', {
             'prompt': prompt,
-            'duration': 6,
-        }, fal_key, timeout=180)
+        }, fal_key, timeout=240)
         vid_url = (result.get('video') or {}).get('url') or result.get('video_url', '')
         data = download_url(vid_url)
         key = f"works/{user_id}/video_{uuid.uuid4().hex}.mp4"
@@ -134,21 +202,13 @@ def handler(event: dict, context) -> dict:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'image_b64 обязателен'})}
 
         image_bytes = base64.b64decode(image_b64)
-        upload_req = urllib.request.Request(
-            'https://fal.run/files/upload',
-            data=image_bytes,
-            headers={'Authorization': f'Key {fal_key}', 'Content-Type': 'image/jpeg'},
-            method='POST',
-        )
-        with urllib.request.urlopen(upload_req, timeout=60) as r:
-            upload_result = json.loads(r.read().decode('utf-8'))
-        image_url = upload_result.get('url') or upload_result.get('image_url')
+        image_url = fal_upload_image(image_bytes, fal_key)
 
-        result = fal_post('https://fal.run/fal-ai/stable-video', {
+        result = fal_queue_submit('fal-ai/stable-video', {
             'image_url': image_url,
             'motion_bucket_id': 127,
             'cond_aug': 0.02,
-        }, fal_key, timeout=180)
+        }, fal_key, timeout=240)
         vid_url = (result.get('video') or {}).get('url') or result.get('video_url', '')
         data = download_url(vid_url)
         key = f"works/{user_id}/anim_{uuid.uuid4().hex}.mp4"

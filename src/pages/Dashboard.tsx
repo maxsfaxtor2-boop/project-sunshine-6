@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [worksLoading, setWorksLoading] = useState(true);
   const [selectedWork, setSelectedWork] = useState<Work | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "photo" | "video" | "animation" | "template" | "ad">("all");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [modal, setModal] = useState<ModalType>(null);
   const [generating, setGenerating] = useState(false);
@@ -43,14 +44,19 @@ export default function Dashboard() {
 
   const fetchWorks = async (userId: number) => {
     setWorksLoading(true);
-    const res = await fetch(`${func2url.works}?user_id=${userId}`);
-    const raw = await res.json();
-    const data = typeof raw === "string" ? JSON.parse(raw) : raw;
-    setWorks(data.works || []);
+    try {
+      const res = await fetch(`${func2url.works}?user_id=${userId}`);
+      const raw = await res.json();
+      const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+      setWorks(data.works || []);
+    } catch {
+      setWorks([]);
+    }
     setWorksLoading(false);
   };
 
   const openModal = (type: ModalType) => {
+    setMobileMenuOpen(false);
     setModal(type); setGenResult(null); setGenError("");
     setPrompt(""); setVideoPrompt(""); setAnimTitle("Оживлённое фото");
     setAnimFile(null); setAnimPreview(""); setTmplDesc("");
@@ -65,7 +71,10 @@ export default function Dashboard() {
     if (id === "animate")   openModal("animation");
     if (id === "templates") openModal("template");
     if (id === "ads")       openModal("ad");
-    if (id === "chats")     document.getElementById("ai-section")?.scrollIntoView({ behavior: "smooth" });
+    if (id === "chats") {
+      setMobileMenuOpen(false);
+      setTimeout(() => document.getElementById("ai-section")?.scrollIntoView({ behavior: "smooth" }), 100);
+    }
   };
 
   const callGenerate = async (body: object) => {
@@ -91,18 +100,22 @@ export default function Dashboard() {
   const handleGeneratePhoto = async () => {
     if (!prompt.trim() || !user) return;
     setGenerating(true); setGenError("");
-    const data = await callGenerate({ type: "photo", prompt: prompt.trim(), title: prompt.trim().slice(0, 60) });
-    if (data.success) afterSuccess(data, prompt.trim());
-    else setGenError(data.error || "Что-то пошло не так");
+    try {
+      const data = await callGenerate({ type: "photo", prompt: prompt.trim(), title: prompt.trim().slice(0, 60) });
+      if (data.success) afterSuccess(data, prompt.trim());
+      else setGenError(data.error || "Что-то пошло не так");
+    } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
     setGenerating(false);
   };
 
   const handleGenerateVideo = async () => {
     if (!videoPrompt.trim() || !user) return;
     setGenerating(true); setGenError("");
-    const data = await callGenerate({ type: "video", prompt: videoPrompt.trim(), title: videoPrompt.trim().slice(0, 60) });
-    if (data.success) afterSuccess(data, videoPrompt.trim());
-    else setGenError(data.error || "Что-то пошло не так");
+    try {
+      const data = await callGenerate({ type: "video", prompt: videoPrompt.trim(), title: videoPrompt.trim().slice(0, 60) });
+      if (data.success) afterSuccess(data, videoPrompt.trim());
+      else setGenError(data.error || "Что-то пошло не так");
+    } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
     setGenerating(false);
   };
 
@@ -119,12 +132,15 @@ export default function Dashboard() {
     if (!animFile || !user) return;
     setGenerating(true); setGenError("");
     const reader = new FileReader();
+    reader.onerror = () => { setGenError("Не удалось прочитать файл"); setGenerating(false); };
     reader.onload = async (ev) => {
-      const dataUrl = ev.target?.result as string;
-      const b64 = dataUrl.split(",")[1];
-      const data = await callGenerate({ type: "animation", image_b64: b64, title: animTitle });
-      if (data.success) afterSuccess(data, "Оживление фото");
-      else setGenError(data.error || "Что-то пошло не так");
+      try {
+        const dataUrl = ev.target?.result as string;
+        const b64 = dataUrl.split(",")[1];
+        const data = await callGenerate({ type: "animation", image_b64: b64, title: animTitle });
+        if (data.success) afterSuccess(data, "Оживление фото");
+        else setGenError(data.error || "Что-то пошло не так");
+      } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
       setGenerating(false);
     };
     reader.readAsDataURL(animFile);
@@ -133,18 +149,22 @@ export default function Dashboard() {
   const handleGenerateTemplate = async () => {
     if (!tmplDesc.trim() || !user) return;
     setGenerating(true); setGenError("");
-    const data = await callGenerate({ type: "template", description: tmplDesc.trim(), size: tmplSize, title: tmplDesc.trim().slice(0, 60) });
-    if (data.success) afterSuccess(data, tmplDesc.trim());
-    else setGenError(data.error || "Что-то пошло не так");
+    try {
+      const data = await callGenerate({ type: "template", description: tmplDesc.trim(), size: tmplSize, title: tmplDesc.trim().slice(0, 60) });
+      if (data.success) afterSuccess(data, tmplDesc.trim());
+      else setGenError(data.error || "Что-то пошло не так");
+    } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
     setGenerating(false);
   };
 
   const handleGenerateAd = async () => {
     if (!adProduct.trim() || !user) return;
     setGenerating(true); setGenError("");
-    const data = await callGenerate({ type: "ad", product: adProduct.trim(), slogan: adSlogan.trim(), platform: adPlatform });
-    if (data.success) afterSuccess(data, adProduct.trim());
-    else setGenError(data.error || "Что-то пошло не так");
+    try {
+      const data = await callGenerate({ type: "ad", product: adProduct.trim(), slogan: adSlogan.trim(), platform: adPlatform });
+      if (data.success) afterSuccess(data, adProduct.trim());
+      else setGenError(data.error || "Что-то пошло не так");
+    } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
     setGenerating(false);
   };
 
@@ -154,30 +174,93 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#020817] text-white">
-      {/* Шапка */}
-      <header className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
+
+      {/* ═══ ШАПКА ═══════════════════════════════════════════════════════════ */}
+      <header className="border-b border-white/10 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-[#020817]/95 backdrop-blur-sm">
         <a href="/" className="text-white text-sm uppercase tracking-widest font-bold hover:text-blue-400 transition-colors">MASYANYA AI</a>
-        <div className="flex items-center gap-4">
+
+        {/* Десктоп */}
+        <div className="hidden sm:flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">{user.name[0].toUpperCase()}</div>
-            <span className="text-sm text-blue-200/80 hidden sm:block">{user.name}</span>
+            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold shrink-0">
+              {user.name[0].toUpperCase()}
+            </div>
+            <span className="text-sm text-blue-200/80">{user.name}</span>
           </div>
           <button onClick={handleLogout} className="text-white/40 hover:text-red-400 transition-colors text-xs uppercase tracking-wide">Выйти</button>
         </div>
+
+        {/* Мобильный бургер */}
+        <button
+          className="sm:hidden flex items-center justify-center w-9 h-9 border border-white/10 rounded-sm text-white/60 hover:text-white hover:border-white/30 transition-colors"
+          onClick={() => setMobileMenuOpen(v => !v)}
+          aria-label="Меню"
+        >
+          <Icon name={mobileMenuOpen ? "X" : "Menu"} size={18} />
+        </button>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-12">
+      {/* Мобильное меню */}
+      {mobileMenuOpen && (
+        <div className="sm:hidden fixed inset-0 top-[57px] z-30 bg-[#020817] overflow-y-auto">
+          <div className="px-4 py-6 space-y-2">
+            {/* Профиль */}
+            <div className="flex items-center gap-3 p-4 border border-white/10 rounded-sm mb-4">
+              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold shrink-0">
+                {user.name[0].toUpperCase()}
+              </div>
+              <div>
+                <p className="text-white font-medium text-sm">{user.name}</p>
+                <p className="text-white/40 text-xs">{user.email}</p>
+              </div>
+            </div>
+
+            <p className="text-xs uppercase tracking-widest text-white/30 px-1 pb-2">Инструменты</p>
+            {TOOLS.map(tool => (
+              <button
+                key={tool.id}
+                onClick={() => handleToolClick(tool.id)}
+                className={`w-full flex items-center gap-4 p-4 border rounded-sm transition-all text-left active:scale-[0.98] ${COLOR_MAP[tool.color]}`}
+              >
+                <Icon name={tool.icon} size={20} className={`shrink-0 ${ICON_COLOR_MAP[tool.color]}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-medium text-sm">{tool.title}</p>
+                  <p className="text-white/40 text-xs truncate">{tool.desc}</p>
+                </div>
+                {tool.active && tool.id !== "chats" && (
+                  <Icon name="ChevronRight" size={16} className={`shrink-0 ${ICON_COLOR_MAP[tool.color]} opacity-60`} />
+                )}
+              </button>
+            ))}
+
+            <div className="pt-4 border-t border-white/10 mt-4">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 p-4 text-red-400/70 hover:text-red-400 active:text-red-300 transition-colors"
+              >
+                <Icon name="LogOut" size={18} className="shrink-0" />
+                <span className="text-sm">Выйти из аккаунта</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
         {/* Приветствие */}
-        <div className="mb-12">
+        <div className="mb-8 sm:mb-12">
           <p className="text-blue-400 text-xs uppercase tracking-widest mb-2">Личный кабинет</p>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Привет, {user.name.split(" ")[0]}!</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">
+            Привет, {user.name.split(" ")[0]}!
+          </h1>
           <p className="text-blue-200/50 text-sm">Выбери инструмент и начни создавать с ИИ</p>
         </div>
 
-        {/* Инструменты */}
-        <div className="mb-12">
+        {/* Десктоп: карточки инструментов */}
+        <div className="hidden sm:block mb-12">
           <h2 className="text-xs uppercase tracking-widest text-blue-200/40 mb-6">Инструменты</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {TOOLS.map((tool) => (
               <div
                 key={tool.id}
@@ -197,6 +280,23 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Мобиль: быстрые кнопки */}
+        <div className="sm:hidden mb-8">
+          <h2 className="text-xs uppercase tracking-widest text-blue-200/40 mb-4">Инструменты</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {TOOLS.map((tool) => (
+              <button
+                key={tool.id}
+                onClick={() => handleToolClick(tool.id)}
+                className={`flex flex-col items-center gap-2 py-4 px-2 border rounded-sm transition-all active:scale-95 ${COLOR_MAP[tool.color]}`}
+              >
+                <Icon name={tool.icon} size={24} className={ICON_COLOR_MAP[tool.color]} />
+                <span className="text-[10px] text-white/70 text-center leading-tight">{tool.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Галерея */}
         <WorksGallery
           works={works}
@@ -209,31 +309,40 @@ export default function Dashboard() {
         />
 
         {/* ИИ-чаты */}
-        <div id="ai-section" className="mb-12">
-          <h2 className="text-xs uppercase tracking-widest text-blue-200/40 mb-6">5 лучших ИИ-чатов</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+        <div id="ai-section" className="mb-8 sm:mb-12">
+          <h2 className="text-xs uppercase tracking-widest text-blue-200/40 mb-4 sm:mb-6">5 лучших ИИ-чатов</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
             {AI_CHATS.map((chat) => (
-              <a key={chat.name} href={chat.url} target="_blank" rel="noopener noreferrer"
-                className="flex flex-col items-center gap-3 border border-white/10 hover:border-white/30 hover:bg-white/5 transition-all duration-300 p-5 group">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: chat.color }} />
-                <span className="text-sm text-white/70 group-hover:text-white transition-colors">{chat.name}</span>
-                <Icon name="ExternalLink" size={12} className="text-white/20 group-hover:text-white/50 transition-colors" />
+              <a
+                key={chat.name}
+                href={chat.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-2 sm:gap-3 border border-white/10 hover:border-white/30 hover:bg-white/5 active:bg-white/10 transition-all duration-200 p-3 sm:p-5 group"
+              >
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: chat.color }} />
+                <span className="text-xs sm:text-sm text-white/70 group-hover:text-white transition-colors text-center leading-tight">{chat.name}</span>
+                <Icon name="ExternalLink" size={11} className="text-white/20 group-hover:text-white/50 transition-colors" />
               </a>
             ))}
           </div>
         </div>
 
         {/* Тариф */}
-        <div className="border border-blue-500/20 bg-blue-500/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="border border-blue-500/20 bg-blue-500/5 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-widest text-blue-400 mb-1">Ваш тариф</p>
             <p className="text-white font-semibold">Старт — Бесплатно</p>
             <p className="text-white/40 text-xs mt-1">5 фото и 1 видео в месяц</p>
           </div>
-          <button onClick={() => navigate("/")} className="bg-blue-600 text-white text-xs uppercase tracking-wide px-6 py-2.5 hover:bg-blue-500 transition-colors flex-shrink-0">
+          <button
+            onClick={() => navigate("/")}
+            className="w-full sm:w-auto bg-blue-600 text-white text-xs uppercase tracking-wide px-6 py-3 sm:py-2.5 hover:bg-blue-500 active:bg-blue-700 transition-colors"
+          >
             Улучшить тариф
           </button>
         </div>
+
       </div>
 
       {/* Модалка генерации */}

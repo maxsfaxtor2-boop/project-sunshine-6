@@ -1,17 +1,21 @@
 import Icon from "@/components/ui/icon";
-import { Work, ModalType, TYPE_LABELS, TYPE_ICONS } from "./DashboardConstants";
+import { Work, TYPE_LABELS, TYPE_ICONS } from "./DashboardConstants";
 
 // ─── Модалка просмотра работы ────────────────────────────────────────────────
 
 function WorkModal({ work, onClose }: { work: Work; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="relative max-w-2xl w-full bg-[#0a1628] border border-white/10 rounded-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="relative w-full sm:max-w-2xl bg-[#0a1628] border border-white/10 sm:rounded-sm rounded-t-xl overflow-hidden max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Мобильная ручка */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 bg-white/20 rounded-full" />
+        </div>
         {work.type === "video" || work.type === "animation"
-          ? <video src={work.url} controls autoPlay loop className="w-full max-h-[60vh] bg-black" />
-          : <img src={work.url} alt={work.title} className="w-full max-h-[60vh] object-contain" />
+          ? <video src={work.url} controls autoPlay loop className="w-full max-h-[50vh] bg-black shrink-0" />
+          : <img src={work.url} alt={work.title} className="w-full max-h-[50vh] object-contain shrink-0" />
         }
-        <div className="p-5">
+        <div className="p-4 sm:p-5 overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Icon name={TYPE_ICONS[work.type] || "Image"} size={14} className="text-blue-400" />
@@ -22,7 +26,7 @@ function WorkModal({ work, onClose }: { work: Work; onClose: () => void }) {
           <h3 className="text-white font-semibold mb-1">{work.title}</h3>
           {work.prompt && <p className="text-white/40 text-xs mb-4">{work.prompt}</p>}
           <a href={work.url} download target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs uppercase tracking-wide px-4 py-2 transition-colors">
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs uppercase tracking-wide px-4 py-2.5 transition-colors">
             <Icon name="Download" size={13} /> Скачать
           </a>
         </div>
