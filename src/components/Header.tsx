@@ -33,11 +33,16 @@ export default function Header({ className }: HeaderProps) {
             Тарифы
           </a>
           {user ? (
-            <div className="flex items-center gap-4">
-              <span className="text-blue-300 text-sm hidden md:block">{user.name}</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="bg-blue-600 text-white text-xs uppercase tracking-wide px-4 py-2 hover:bg-blue-500 transition-colors duration-300"
+              >
+                Личный кабинет
+              </button>
               <button
                 onClick={handleLogout}
-                className="border border-white/30 text-white text-xs uppercase tracking-wide px-4 py-2 hover:border-red-400 hover:text-red-400 transition-colors duration-300"
+                className="border border-white/30 text-white text-xs uppercase tracking-wide px-4 py-2 hover:border-red-400 hover:text-red-400 transition-colors duration-300 hidden md:block"
               >
                 Выйти
               </button>
