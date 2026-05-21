@@ -17,6 +17,7 @@ export default function Dashboard() {
 
   const [modal, setModal] = useState<ModalType>(null);
   const [generating, setGenerating] = useState(false);
+  const [generatingSeconds, setGeneratingSeconds] = useState(0);
   const [genError, setGenError] = useState("");
   const [genResult, setGenResult] = useState<{ url: string; title: string; prompt: string; isVideo: boolean } | null>(null);
 
@@ -109,31 +110,36 @@ export default function Dashboard() {
   };
 
   const pollUntilDone = async (requestId: string, endpoint: string, workType: "video" | "animation", title: string, usedPrompt: string) => {
-    const maxAttempts = 60;
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(r => setTimeout(r, 4000));
-      try {
-        const res = await fetch(func2url["generate-image"], {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: user!.id, action: "poll", type: workType, request_id: requestId, endpoint, title, prompt: usedPrompt }),
-        });
-        const raw = await res.json();
-        const data = typeof raw === "string" ? JSON.parse(raw) : raw;
-        if (data.status === "COMPLETED") {
-          afterSuccess(data, usedPrompt);
-          setGenerating(false);
-          return;
-        }
-        if (data.status === "FAILED") {
-          setGenError(data.error || "Ошибка генерации");
-          setGenerating(false);
-          return;
-        }
-      } catch { /* продолжаем опрос */ }
+    setGeneratingSeconds(0);
+    const timer = setInterval(() => setGeneratingSeconds(s => s + 1), 1000);
+    const maxAttempts = 120;
+    try {
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise(r => setTimeout(r, 5000));
+        try {
+          const res = await fetch(func2url["generate-image"], {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: user!.id, action: "poll", type: workType, request_id: requestId, endpoint, title, prompt: usedPrompt }),
+          });
+          const raw = await res.json();
+          const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (data.status === "COMPLETED") {
+            afterSuccess(data, usedPrompt);
+            return;
+          }
+          if (data.status === "FAILED") {
+            setGenError(data.error || "Ошибка генерации");
+            return;
+          }
+        } catch { /* продолжаем опрос */ }
+      }
+      setGenError("Превышено время ожидания. Попробуй ещё раз.");
+    } finally {
+      clearInterval(timer);
+      setGenerating(false);
+      setGeneratingSeconds(0);
     }
-    setGenError("Превышено время ожидания. Попробуй ещё раз.");
-    setGenerating(false);
   };
 
   const handleGenerateVideo = async () => {
@@ -389,6 +395,7 @@ export default function Dashboard() {
       <GenerateModal
         modal={modal}
         generating={generating}
+        generatingSeconds={generatingSeconds}
         genError={genError}
         genResult={genResult}
         onClose={closeModal}

@@ -40,6 +40,7 @@ function GenResult({ url, title, prompt, isVideo, onAgain }: {
 interface GenerateModalProps {
   modal: ModalType;
   generating: boolean;
+  generatingSeconds?: number;
   genError: string;
   genResult: { url: string; title: string; prompt: string; isVideo: boolean } | null;
   onClose: () => void;
@@ -78,7 +79,7 @@ interface GenerateModalProps {
 // ─── Компонент модалки ───────────────────────────────────────────────────────
 
 export default function GenerateModal({
-  modal, generating, genError, genResult,
+  modal, generating, generatingSeconds = 0, genError, genResult,
   onClose, onAgain,
   prompt, setPrompt, handleGeneratePhoto,
   videoPrompt, setVideoPrompt, handleGenerateVideo,
@@ -262,10 +263,15 @@ export default function GenerateModal({
                 className="mt-5 w-full bg-blue-600 hover:bg-blue-500 disabled:bg-white/10 disabled:text-white/30 text-white text-sm uppercase tracking-wide py-3 transition-colors flex items-center justify-center gap-2"
               >
                 {generating
-                  ? <>
-                      <Icon name="Loader2" size={16} className="animate-spin" />
-                      {modal === "video" || modal === "animation" ? "Генерирую... (~1-2 мин)" : "Генерирую..."}
-                    </>
+                  ? (() => {
+                      const isLong = modal === "video" || modal === "animation";
+                      const mm = String(Math.floor(generatingSeconds / 60)).padStart(2, "0");
+                      const ss = String(generatingSeconds % 60).padStart(2, "0");
+                      return <>
+                        <Icon name="Loader2" size={16} className="animate-spin" />
+                        {isLong ? `Генерирую... ${mm}:${ss}` : "Генерирую..."}
+                      </>;
+                    })()
                   : <><Icon name="Sparkles" size={16} /> Создать</>
                 }
               </button>
