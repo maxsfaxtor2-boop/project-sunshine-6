@@ -21,7 +21,7 @@ export default function Login() {
     const res = await fetch(func2url.login, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ action: "login", ...form }),
     });
 
     const raw = await res.json();
@@ -87,6 +87,9 @@ export default function Login() {
           </button>
 
           <p className="text-center text-blue-200/40 text-xs pt-2">
+            <a href="/forgot-password" className="text-blue-400 hover:underline">Забыл пароль?</a>
+          </p>
+          <p className="text-center text-blue-200/40 text-xs">
             Нет аккаунта?{" "}
             <a href="/register" className="text-blue-400 hover:underline">Зарегистрироваться</a>
           </p>

@@ -7,18 +7,46 @@
       "expectedStatus": 200
     },
     {
-      "name": "Missing fields",
+      "name": "login: пустые поля",
       "method": "POST",
       "path": "/",
-      "body": {"email": "", "password": ""},
+      "body": {"action": "login", "email": "", "password": ""},
       "expectedStatus": 400
     },
     {
-      "name": "Wrong credentials",
+      "name": "login: неверные данные",
       "method": "POST",
       "path": "/",
-      "body": {"email": "nobody@example.com", "password": "wrongpass"},
+      "body": {"action": "login", "email": "nobody@example.com", "password": "wrongpass"},
       "expectedStatus": 401
+    },
+    {
+      "name": "reset_request: без email",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "reset_request"},
+      "expectedStatus": 400
+    },
+    {
+      "name": "reset_request: несуществующий email",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "reset_request", "email": "nobody@example.com"},
+      "expectedStatus": 200
+    },
+    {
+      "name": "reset_confirm: без токена",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "reset_confirm"},
+      "expectedStatus": 400
+    },
+    {
+      "name": "reset_confirm: неверный токен",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "reset_confirm", "token": "invalidtoken000", "password": "newpass123"},
+      "expectedStatus": 400
     }
   ]
 }
