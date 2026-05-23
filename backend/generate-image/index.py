@@ -5,8 +5,10 @@ import uuid
 import base64
 import urllib.request
 import time
+import io
 import psycopg2
 import boto3
+from PIL import Image, ImageDraw, ImageFont
 
 HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -118,6 +120,49 @@ def download_url(url, timeout=60):
 def upload_to_s3(s3, data, key, content_type):
     s3.put_object(Bucket='files', Key=key, Body=data, ContentType=content_type)
     return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+
+def overlay_text_on_image(image_data: bytes, slogan: str) -> bytes:
+    img = Image.open(io.BytesIO(image_data)).convert('RGBA')
+    w, h = img.size
+
+    overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+
+    bar_h = max(80, h // 6)
+    draw.rectangle([(0, h - bar_h), (w, h)], fill=(0, 0, 0, 180))
+
+    font_size = max(28, bar_h // 3)
+    try:
+        font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
+    except Exception:
+        font = ImageFont.load_default()
+
+    bbox = draw.textbbox((0, 0), slogan, font=font)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+
+    max_text_w = w - 40
+    if text_w > max_text_w:
+        font_size = int(font_size * max_text_w / text_w)
+        try:
+            font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
+        except Exception:
+            font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), slogan, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+
+    x = (w - text_w) // 2
+    y = h - bar_h + (bar_h - text_h) // 2
+
+    draw.text((x + 2, y + 2), slogan, font=font, fill=(0, 0, 0, 160))
+    draw.text((x, y), slogan, font=font, fill=(255, 255, 255, 255))
+
+    result = Image.alpha_composite(img, overlay).convert('RGB')
+    buf = io.BytesIO()
+    result.save(buf, format='JPEG', quality=92)
+    return buf.getvalue()
 
 
 def save_work(user_id, title, work_type, url, prompt):
@@ -267,18 +312,18 @@ def handler(event: dict, context) -> dict:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'product обязателен'})}
 
         image_size, platform_label = AD_PLATFORMS.get(platform_key, ('square_hd', 'Instagram'))
-        slogan_part = f', with text caption exactly: "{slogan}" written in the same language as the slogan' if slogan else ', no text'
         fal_prompt = (
-            f"Professional advertising visual for {product}{slogan_part}. "
+            f"Professional advertising photo for {product}, no text, no words, no letters. "
             f"Commercial product photography, marketing campaign, "
             f"eye-catching advertisement, professional studio lighting, "
-            f"high-end brand promotion, clean background, premium quality. "
-            f"If text is present, render it exactly as given, preserving original language and characters."
+            f"high-end brand promotion, clean background, premium quality"
         )
         result = fal_post('https://fal.run/fal-ai/flux/schnell', {
             'prompt': fal_prompt, 'image_size': image_size, 'num_images': 1, 'enable_safety_checker': True,
         }, fal_key)
         data = download_url(result['images'][0]['url'])
+        if slogan:
+            data = overlay_text_on_image(data, slogan)
         key = f"works/{user_id}/ad_{uuid.uuid4().hex}.jpg"
         cdn = upload_to_s3(s3, data, key, 'image/jpeg')
         work_id = save_work(user_id, title, 'ad', cdn, product)
