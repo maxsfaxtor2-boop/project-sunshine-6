@@ -267,12 +267,13 @@ def handler(event: dict, context) -> dict:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'product обязателен'})}
 
         image_size, platform_label = AD_PLATFORMS.get(platform_key, ('square_hd', 'Instagram'))
-        slogan_part = f', slogan: "{slogan}"' if slogan else ''
+        slogan_part = f', with text caption exactly: "{slogan}" written in the same language as the slogan' if slogan else ', no text'
         fal_prompt = (
-            f"Professional advertising photo for {product}{slogan_part}. "
+            f"Professional advertising visual for {product}{slogan_part}. "
             f"Commercial product photography, marketing campaign, "
             f"eye-catching advertisement, professional studio lighting, "
-            f"high-end brand promotion, clean background, premium quality"
+            f"high-end brand promotion, clean background, premium quality. "
+            f"If text is present, render it exactly as given, preserving original language and characters."
         )
         result = fal_post('https://fal.run/fal-ai/flux/schnell', {
             'prompt': fal_prompt, 'image_size': image_size, 'num_images': 1, 'enable_safety_checker': True,
