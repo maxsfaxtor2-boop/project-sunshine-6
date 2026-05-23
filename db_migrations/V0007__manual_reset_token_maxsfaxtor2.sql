@@ -1,0 +1,2 @@
+INSERT INTO t_p32437567_project_sunshine_6.password_reset_tokens (user_id, token, expires_at)
+VALUES (3, 'aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344', NOW() + INTERVAL '2 hours');
