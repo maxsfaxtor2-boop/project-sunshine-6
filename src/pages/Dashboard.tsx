@@ -30,7 +30,8 @@ export default function Dashboard() {
   const [tmplDesc, setTmplDesc] = useState("");
   const [tmplSize, setTmplSize] = useState("banner");
   const [adProduct, setAdProduct] = useState("");
-  const [adSlogan, setAdSlogan] = useState("");
+  const [adVisual, setAdVisual] = useState("");
+  const [adText, setAdText] = useState("");
   const [adPlatform, setAdPlatform] = useState("instagram");
 
   useEffect(() => {
@@ -207,7 +208,7 @@ export default function Dashboard() {
     if (!adProduct.trim() || !user) return;
     setGenerating(true); setGenError("");
     try {
-      const data = await callGenerate({ type: "ad", product: adProduct.trim(), slogan: adSlogan.trim(), platform: adPlatform });
+      const data = await callGenerate({ type: "ad", product: adProduct.trim(), visual: adVisual.trim(), slogan: adText.trim(), platform: adPlatform });
       if (data.success) afterSuccess(data, adProduct.trim());
       else setGenError(data.error || "Что-то пошло не так");
     } catch { setGenError("Ошибка соединения, попробуй ещё раз"); }
@@ -408,7 +409,8 @@ export default function Dashboard() {
         tmplDesc={tmplDesc} setTmplDesc={setTmplDesc}
         tmplSize={tmplSize} setTmplSize={setTmplSize} handleGenerateTemplate={handleGenerateTemplate}
         adProduct={adProduct} setAdProduct={setAdProduct}
-        adSlogan={adSlogan} setAdSlogan={setAdSlogan}
+        adVisual={adVisual} setAdVisual={setAdVisual}
+        adText={adText} setAdText={setAdText}
         adPlatform={adPlatform} setAdPlatform={setAdPlatform} handleGenerateAd={handleGenerateAd}
       />
     </div>

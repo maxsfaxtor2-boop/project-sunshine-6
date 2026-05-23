@@ -322,6 +322,7 @@ def handler(event: dict, context) -> dict:
     # ── РЕКЛАМА ──────────────────────────────────────────────────────
     if work_type == 'ad':
         product = (body.get('product') or '').strip()
+        visual = (body.get('visual') or '').strip()
         slogan = (body.get('slogan') or '').strip()
         platform_key = (body.get('platform') or 'instagram').strip()
         title = (body.get('title') or f"Реклама: {product[:40]}").strip()
@@ -329,11 +330,12 @@ def handler(event: dict, context) -> dict:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'product обязателен'})}
 
         image_size, platform_label = AD_PLATFORMS.get(platform_key, ('square_hd', 'Instagram'))
+        visual_part = visual if visual else f"product shot of {product}"
         fal_prompt = (
-            f"Professional advertising photo for {product}, no text, no words, no letters. "
-            f"Commercial product photography, marketing campaign, "
-            f"eye-catching advertisement, professional studio lighting, "
-            f"high-end brand promotion, clean background, premium quality"
+            f"{visual_part}, advertising photo for {product}. "
+            f"No text, no words, no letters. "
+            f"Professional commercial photography, studio lighting, "
+            f"high-end brand promotion, premium quality, sharp focus"
         )
         result = fal_post('https://fal.run/fal-ai/flux/schnell', {
             'prompt': fal_prompt, 'image_size': image_size, 'num_images': 1, 'enable_safety_checker': True,

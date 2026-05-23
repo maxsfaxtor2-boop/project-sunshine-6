@@ -69,8 +69,10 @@ interface GenerateModalProps {
 
   adProduct: string;
   setAdProduct: (v: string) => void;
-  adSlogan: string;
-  setAdSlogan: (v: string) => void;
+  adVisual: string;
+  setAdVisual: (v: string) => void;
+  adText: string;
+  setAdText: (v: string) => void;
   adPlatform: string;
   setAdPlatform: (v: string) => void;
   handleGenerateAd: () => void;
@@ -85,7 +87,7 @@ export default function GenerateModal({
   videoPrompt, setVideoPrompt, handleGenerateVideo,
   animTitle, setAnimTitle, animFile, animPreview, handleAnimFile, handleGenerateAnimation,
   tmplDesc, setTmplDesc, tmplSize, setTmplSize, handleGenerateTemplate,
-  adProduct, setAdProduct, adSlogan, setAdSlogan, adPlatform, setAdPlatform, handleGenerateAd,
+  adProduct, setAdProduct, adVisual, setAdVisual, adText, setAdText, adPlatform, setAdPlatform, handleGenerateAd,
 }: GenerateModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -227,9 +229,19 @@ export default function GenerateModal({
                     />
                   </div>
                   <div>
-                    <label className="text-xs uppercase tracking-widest text-white/40 mb-2 block">Слоган (необязательно)</label>
+                    <label className="text-xs uppercase tracking-widest text-white/40 mb-2 block">Что показать на фото</label>
+                    <textarea
+                      value={adVisual} onChange={e => setAdVisual(e.target.value)}
+                      placeholder="Например: чашка горячего капучино на деревянном столе, рядом зерна кофе, утренний свет"
+                      rows={3} disabled={generating}
+                      className="w-full bg-white/5 border border-white/10 focus:border-blue-500/60 outline-none text-white placeholder-white/20 text-sm px-4 py-3 resize-none transition-colors rounded-sm"
+                    />
+                    <p className="text-white/20 text-xs mt-1">Опиши визуал — чем подробнее, тем точнее результат</p>
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-widest text-white/40 mb-2 block">Слоган на фото (необязательно)</label>
                     <input
-                      value={adSlogan} onChange={e => setAdSlogan(e.target.value)}
+                      value={adText} onChange={e => setAdText(e.target.value)}
                       placeholder="Просто сделай это"
                       disabled={generating}
                       className="w-full bg-white/5 border border-white/10 focus:border-blue-500/60 outline-none text-white placeholder-white/20 text-sm px-4 py-3 transition-colors rounded-sm"
