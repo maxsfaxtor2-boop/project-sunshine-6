@@ -122,6 +122,29 @@ def upload_to_s3(s3, data, key, content_type):
     return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
 
 
+def get_cyrillic_font(size: int) -> ImageFont.FreeTypeFont:
+    font_paths = [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+        '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
+        '/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf',
+    ]
+    for path in font_paths:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    # скачиваем шрифт с поддержкой кириллицы
+    try:
+        font_url = 'https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Bold.ttf'
+        req = urllib.request.Request(font_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            font_data = r.read()
+        return ImageFont.truetype(io.BytesIO(font_data), size)
+    except Exception:
+        return ImageFont.load_default()
+
+
 def overlay_text_on_image(image_data: bytes, slogan: str) -> bytes:
     img = Image.open(io.BytesIO(image_data)).convert('RGBA')
     w, h = img.size
@@ -129,26 +152,20 @@ def overlay_text_on_image(image_data: bytes, slogan: str) -> bytes:
     overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    bar_h = max(80, h // 6)
-    draw.rectangle([(0, h - bar_h), (w, h)], fill=(0, 0, 0, 180))
+    bar_h = max(90, h // 5)
+    draw.rectangle([(0, h - bar_h), (w, h)], fill=(0, 0, 0, 190))
 
-    font_size = max(28, bar_h // 3)
-    try:
-        font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
-    except Exception:
-        font = ImageFont.load_default()
+    font_size = max(32, bar_h // 3)
+    font = get_cyrillic_font(font_size)
 
     bbox = draw.textbbox((0, 0), slogan, font=font)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
 
-    max_text_w = w - 40
+    max_text_w = w - 60
     if text_w > max_text_w:
         font_size = int(font_size * max_text_w / text_w)
-        try:
-            font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
-        except Exception:
-            font = ImageFont.load_default()
+        font = get_cyrillic_font(font_size)
         bbox = draw.textbbox((0, 0), slogan, font=font)
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
@@ -156,7 +173,7 @@ def overlay_text_on_image(image_data: bytes, slogan: str) -> bytes:
     x = (w - text_w) // 2
     y = h - bar_h + (bar_h - text_h) // 2
 
-    draw.text((x + 2, y + 2), slogan, font=font, fill=(0, 0, 0, 160))
+    draw.text((x + 2, y + 2), slogan, font=font, fill=(0, 0, 0, 180))
     draw.text((x, y), slogan, font=font, fill=(255, 255, 255, 255))
 
     result = Image.alpha_composite(img, overlay).convert('RGB')
