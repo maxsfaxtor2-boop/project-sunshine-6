@@ -1,6 +1,5 @@
 import { useScroll, useTransform, motion } from "framer-motion";
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
 
 const AI_CHATS = [
   { name: "ChatGPT", color: "#10a37f", url: "https://chat.openai.com" },
@@ -11,7 +10,6 @@ const AI_CHATS = [
 ];
 
 export default function Hero() {
-  const navigate = useNavigate();
   const container = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: container,
@@ -22,11 +20,12 @@ export default function Hero() {
   return (
     <div
       ref={container}
-      className="relative flex items-center justify-center h-screen overflow-hidden"
+      className="relative flex items-center justify-center h-screen"
+      style={{ overflow: "clip" }}
     >
       <motion.div
         style={{ y }}
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 w-full h-full pointer-events-none"
       >
         <img
           src="https://cdn.poehali.dev/projects/614d053f-56a2-4ff5-8bc9-4363df40c0a0/files/637b9784-eea2-4194-a215-065d8eb6cc1c.jpg"
@@ -45,24 +44,24 @@ export default function Hero() {
           Генерируй фото и видео, оживляй изображения, создавай рекламные материалы — всё с силой искусственного интеллекта
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-14">
-          <button
-            onClick={() => navigate("/register")}
-            className="bg-white text-black px-8 py-3 uppercase tracking-wide text-sm font-semibold hover:bg-neutral-200 transition-colors duration-300"
+          <a
+            href="/register"
+            className="bg-white text-black px-8 py-4 uppercase tracking-wide text-sm font-semibold hover:bg-neutral-200 transition-colors duration-300 text-center"
           >
             Начать бесплатно
-          </button>
-          <button
-            onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
-            className="border border-white text-white px-8 py-3 uppercase tracking-wide text-sm hover:bg-white/10 transition-colors duration-300"
+          </a>
+          <a
+            href="#features"
+            className="border border-white text-white px-8 py-4 uppercase tracking-wide text-sm hover:bg-white/10 transition-colors duration-300 text-center"
           >
             Смотреть примеры
-          </button>
-          <button
-            onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
-            className="border border-white/50 text-white/80 px-8 py-3 uppercase tracking-wide text-sm hover:bg-white/10 hover:border-white transition-colors duration-300"
+          </a>
+          <a
+            href="#pricing"
+            className="border border-white/50 text-white/80 px-8 py-4 uppercase tracking-wide text-sm hover:bg-white/10 hover:border-white transition-colors duration-300 text-center"
           >
             Тарифы
-          </button>
+          </a>
         </div>
 
         <div id="ai-chats">

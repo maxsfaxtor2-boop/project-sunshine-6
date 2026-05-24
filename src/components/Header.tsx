@@ -24,7 +24,7 @@ export default function Header({ className }: HeaderProps) {
 
   return (
     <>
-      <header className={`absolute top-0 left-0 right-0 z-20 p-5 md:p-6 ${className ?? ""}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 p-5 md:p-6 ${className ?? ""}`}>
         <div className="flex justify-between items-center">
           <a href="/" className="text-white text-sm uppercase tracking-wide font-bold hover:text-blue-400 transition-colors">
             MASYANYA AI
