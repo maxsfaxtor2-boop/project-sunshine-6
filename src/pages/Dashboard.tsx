@@ -62,7 +62,7 @@ export default function Dashboard() {
     setModal(type); setGenResult(null); setGenError("");
     setPrompt(""); setVideoPrompt(""); setAnimTitle("Оживлённое фото");
     setAnimFile(null); setAnimPreview(""); setTmplDesc("");
-    setAdProduct(""); setAdSlogan("");
+    setAdProduct(""); setAdText(""); setAdVisual("");
   };
 
   const closeModal = () => { if (!generating) setModal(null); };
