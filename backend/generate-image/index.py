@@ -73,8 +73,11 @@ def fal_queue_submit_only(endpoint, payload, fal_key):
 
 def fal_queue_poll(endpoint, request_id, fal_key):
     """Проверяет статус задачи в FAL queue. Возвращает status + result если готово."""
-    status_url = f'https://queue.fal.run/{endpoint}/requests/{request_id}/status'
-    result_url = f'https://queue.fal.run/{endpoint}/requests/{request_id}'
+    # для Kling и других составных endpoint'ов статус опрашивается по базовому app_id (первые 2 сегмента)
+    parts = endpoint.split('/')
+    base_endpoint = '/'.join(parts[:2]) if len(parts) > 2 else endpoint
+    status_url = f'https://queue.fal.run/{base_endpoint}/requests/{request_id}/status'
+    result_url = f'https://queue.fal.run/{base_endpoint}/requests/{request_id}'
 
     status_req = urllib.request.Request(
         status_url,
