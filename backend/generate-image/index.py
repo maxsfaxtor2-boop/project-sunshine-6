@@ -4,6 +4,7 @@ import os
 import uuid
 import base64
 import urllib.request
+import urllib.error
 import time
 import io
 import psycopg2
@@ -274,8 +275,20 @@ def handler(event: dict, context) -> dict:
         if not prompt:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'prompt обязателен'})}
 
-        endpoint = 'fal-ai/minimax-video/text-to-video'
-        request_id = fal_queue_submit_only(endpoint, {'prompt': prompt}, fal_key)
+        endpoint = 'fal-ai/kling-video/v1.6/standard/text-to-video'
+        try:
+            request_id = fal_queue_submit_only(endpoint, {
+                'prompt': prompt,
+                'duration': '5',
+                'aspect_ratio': '16:9',
+            }, fal_key)
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode('utf-8', errors='ignore') if hasattr(e, 'read') else str(e)
+            print(f"[VIDEO ERROR] {e.code}: {err_body}")
+            return {'statusCode': 502, 'headers': HEADERS, 'body': json.dumps({'error': f'FAL вернул ошибку {e.code}. Попробуй другой промпт.'})}
+        except Exception as e:
+            print(f"[VIDEO ERROR] {e}")
+            return {'statusCode': 502, 'headers': HEADERS, 'body': json.dumps({'error': 'Не удалось отправить задачу в FAL'})}
         return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'status': 'IN_QUEUE', 'request_id': request_id, 'endpoint': endpoint, 'title': title})}
 
     # ── АНИМАЦИЯ: загрузить фото → submit → вернуть request_id ───────
@@ -285,15 +298,28 @@ def handler(event: dict, context) -> dict:
         if not image_b64:
             return {'statusCode': 400, 'headers': HEADERS, 'body': json.dumps({'error': 'image_b64 обязателен'})}
 
-        image_bytes = base64.b64decode(image_b64)
-        image_url = fal_upload_image(image_bytes, fal_key)
+        try:
+            image_bytes = base64.b64decode(image_b64)
+            image_url = fal_upload_image(image_bytes, fal_key)
+        except Exception as e:
+            print(f"[ANIM UPLOAD ERROR] {e}")
+            return {'statusCode': 502, 'headers': HEADERS, 'body': json.dumps({'error': 'Не удалось загрузить фото'})}
 
-        endpoint = 'fal-ai/stable-video'
-        request_id = fal_queue_submit_only(endpoint, {
-            'image_url': image_url,
-            'motion_bucket_id': 127,
-            'cond_aug': 0.02,
-        }, fal_key)
+        endpoint = 'fal-ai/kling-video/v1.6/standard/image-to-video'
+        try:
+            request_id = fal_queue_submit_only(endpoint, {
+                'image_url': image_url,
+                'prompt': 'natural motion, cinematic animation',
+                'duration': '5',
+                'aspect_ratio': '16:9',
+            }, fal_key)
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode('utf-8', errors='ignore') if hasattr(e, 'read') else str(e)
+            print(f"[ANIM ERROR] {e.code}: {err_body}")
+            return {'statusCode': 502, 'headers': HEADERS, 'body': json.dumps({'error': f'FAL вернул ошибку {e.code}. Попробуй другое фото.'})}
+        except Exception as e:
+            print(f"[ANIM ERROR] {e}")
+            return {'statusCode': 502, 'headers': HEADERS, 'body': json.dumps({'error': 'Не удалось отправить задачу в FAL'})}
         return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'status': 'IN_QUEUE', 'request_id': request_id, 'endpoint': endpoint, 'title': title})}
 
     # ── ШАБЛОН ───────────────────────────────────────────────────────
