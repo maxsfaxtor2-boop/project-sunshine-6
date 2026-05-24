@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 
 const FEATURES = [
@@ -10,6 +11,7 @@ const FEATURES = [
 ];
 
 export default function Featured() {
+  const navigate = useNavigate();
   return (
     <div id="features" className="flex flex-col lg:flex-row lg:justify-between lg:items-center min-h-screen px-6 py-12 lg:py-0 bg-[#020817]">
       <div className="flex-1 h-[400px] lg:h-[800px] mb-8 lg:mb-0 lg:order-2">
@@ -37,7 +39,10 @@ export default function Featured() {
             </div>
           ))}
         </div>
-        <button className="bg-blue-600 text-white border border-blue-600 px-4 py-2 text-sm transition-all duration-300 hover:bg-blue-500 cursor-pointer w-fit uppercase tracking-wide">
+        <button
+          onClick={() => navigate("/register")}
+          className="bg-blue-600 text-white border border-blue-600 px-4 py-2 text-sm transition-all duration-300 hover:bg-blue-500 cursor-pointer w-fit uppercase tracking-wide"
+        >
           Попробовать
         </button>
       </div>

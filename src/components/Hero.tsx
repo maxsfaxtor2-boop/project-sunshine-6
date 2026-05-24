@@ -51,7 +51,10 @@ export default function Hero() {
           >
             Начать бесплатно
           </button>
-          <button className="border border-white text-white px-8 py-3 uppercase tracking-wide text-sm hover:bg-white/10 transition-colors duration-300">
+          <button
+            onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+            className="border border-white text-white px-8 py-3 uppercase tracking-wide text-sm hover:bg-white/10 transition-colors duration-300"
+          >
             Смотреть примеры
           </button>
         </div>
