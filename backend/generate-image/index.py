@@ -45,29 +45,17 @@ def fal_post(url, payload, fal_key, timeout=120):
 
 
 def fal_upload_image(image_bytes, fal_key, mime_type='image/jpeg'):
-    """Загружает изображение через FAL storage API и возвращает URL"""
-    req = urllib.request.Request(
-        'https://fal.run/fal-ai/storage/upload/initiate',
-        data=json.dumps({'content_type': mime_type, 'file_size': len(image_bytes)}).encode('utf-8'),
-        headers={'Authorization': f'Key {fal_key}', 'Content-Type': 'application/json'},
-        method='POST',
+    """Загружает картинку в наш S3 и возвращает публичный CDN URL — это надёжнее чем FAL storage"""
+    s3 = boto3.client(
+        's3',
+        endpoint_url='https://bucket.poehali.dev',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        init_result = json.loads(resp.read().decode('utf-8'))
-
-    upload_url = init_result['upload_url']
-    file_url = init_result['file_url']
-
-    put_req = urllib.request.Request(
-        upload_url,
-        data=image_bytes,
-        headers={'Content-Type': mime_type},
-        method='PUT',
-    )
-    with urllib.request.urlopen(put_req, timeout=60) as r:
-        r.read()
-
-    return file_url
+    ext = 'png' if mime_type == 'image/png' else 'jpg'
+    key = f"fal-uploads/{uuid.uuid4().hex}.{ext}"
+    s3.put_object(Bucket='files', Key=key, Body=image_bytes, ContentType=mime_type)
+    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
 
 
 def fal_queue_submit_only(endpoint, payload, fal_key):
