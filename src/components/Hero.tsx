@@ -57,6 +57,12 @@ export default function Hero() {
           >
             Смотреть примеры
           </button>
+          <button
+            onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
+            className="border border-white/50 text-white/80 px-8 py-3 uppercase tracking-wide text-sm hover:bg-white/10 hover:border-white transition-colors duration-300"
+          >
+            Тарифы
+          </button>
         </div>
 
         <div id="ai-chats">
