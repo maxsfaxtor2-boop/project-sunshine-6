@@ -28,6 +28,11 @@ def send_reset_email(to_email: str, user_name: str, token: str):
     base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
     reset_link = f"{base_url}/reset-password?token={token}"
 
+    # диагностика — без раскрытия пароля
+    pwd_len = len(smtp_password) if smtp_password else 0
+    pwd_has_space = ' ' in smtp_password if smtp_password else False
+    print(f"[SMTP DEBUG] user='{smtp_user}' pwd_len={pwd_len} pwd_has_space={pwd_has_space}")
+
     html_body = f"""
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #0a0f1e; color: #fff; padding: 40px; border-radius: 8px;">
       <h2 style="color: #60a5fa; margin-bottom: 8px;">Сброс пароля</h2>
