@@ -73,12 +73,13 @@ def fal_queue_submit_only(endpoint, payload, fal_key):
 
 def fal_queue_poll(endpoint, request_id, fal_key):
     """Проверяет статус задачи в FAL queue. Возвращает status + result если готово."""
-    # для Kling и других составных endpoint'ов статус опрашивается по базовому app_id (первые 2 сегмента)
+    # для составных endpoint'ов (Kling и др.) статус опрашивается по базовому app_id
     parts = endpoint.split('/')
     base_endpoint = '/'.join(parts[:2]) if len(parts) > 2 else endpoint
     status_url = f'https://queue.fal.run/{base_endpoint}/requests/{request_id}/status'
-    result_url = f'https://queue.fal.run/{base_endpoint}/requests/{request_id}'
+    result_url = f'https://queue.fal.run/{base_endpoint}/requests/{request_id}/response'
 
+    print(f"[POLL] status_url={status_url}")
     status_req = urllib.request.Request(
         status_url,
         headers={'Authorization': f'Key {fal_key}'},
@@ -88,6 +89,7 @@ def fal_queue_poll(endpoint, request_id, fal_key):
         status = json.loads(resp.read().decode('utf-8'))
 
     job_status = status.get('status', 'IN_QUEUE')
+    print(f"[POLL] job_status={job_status}")
 
     if job_status == 'COMPLETED':
         result_req = urllib.request.Request(
@@ -96,9 +98,12 @@ def fal_queue_poll(endpoint, request_id, fal_key):
             method='GET',
         )
         with urllib.request.urlopen(result_req, timeout=20) as resp:
-            return {'status': 'COMPLETED', 'result': json.loads(resp.read().decode('utf-8'))}
+            result = json.loads(resp.read().decode('utf-8'))
+        print(f"[POLL] result keys={list(result.keys())}")
+        return {'status': 'COMPLETED', 'result': result}
 
     if job_status == 'FAILED':
+        print(f"[POLL] FAILED: {status.get('error')}")
         return {'status': 'FAILED', 'error': str(status.get('error', 'unknown error'))}
 
     return {'status': job_status}
@@ -273,6 +278,7 @@ def handler(event: dict, context) -> dict:
                 'duration': '5',
                 'aspect_ratio': '16:9',
             }, fal_key)
+            print(f"[VIDEO] submitted, request_id={request_id}")
         except urllib.error.HTTPError as e:
             err_body = e.read().decode('utf-8', errors='ignore') if hasattr(e, 'read') else str(e)
             print(f"[VIDEO ERROR] {e.code}: {err_body}")
